@@ -1,5 +1,6 @@
 # Hemera-rabbitmq
 
+[![Build Status](https://travis-ci.org/hemerajs/hemera-rabbitmq.svg?branch=master)](https://travis-ci.org/hemerajs/hemera-rabbitmq)
 [![npm](https://img.shields.io/npm/v/hemera-rabbitmq.svg?maxAge=3600)](https://www.npmjs.com/package/hemera-rabbitmq)
 [![styled with prettier](https://img.shields.io/badge/styled_with-prettier-ff69b4.svg)](#badge)
 
@@ -96,7 +97,7 @@ hemera.ready(() => {
 
 * [RabbitMQ API](#RabbitMQ-api)
   * [Publish](#publish)
-  * [Create subscriber](#create-subscribe)
+  * [Create subscriber](#create-subscriber)
   * [Consume events](#consume-events)
   
  
