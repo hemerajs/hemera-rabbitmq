@@ -1,13 +1,12 @@
 'use strict'
 
 const Hemera = require('nats-hemera')
+const HemeraJoi = require('hemera-joi')
 const Nats = require('nats')
 const HemeraRabbitmq = require('./../index')
 const Code = require('code')
 const HemeraTestsuite = require('hemera-testsuite')
 const expect = Code.expect
-
-process.on('unhandledRejection', up => { throw up })
 
 describe('Basic', function() {
   let PORT = 6242
@@ -16,9 +15,10 @@ describe('Basic', function() {
   let server
   let hemera
   let rabbitmq = {
-    username: 'guest',
-    password: 'guest'
+    username: 'user',
+    password: 'user'
   }
+  let topic = 'rabbitmq'
 
   const options = {
     // arguments used to establish a connection to a broker
@@ -31,7 +31,7 @@ describe('Basic', function() {
     // define the exchanges
     exchanges: [
       {
-        name: 'pubsub',
+        name: 'myexchange',
         type: 'fanout'
       }
     ],
@@ -45,7 +45,7 @@ describe('Basic', function() {
     // binds exchanges and queues to one another
     bindings: [
       {
-        exchange: 'pubsub',
+        exchange: 'myexchange',
         target: 'payment',
         keys: []
       }
@@ -56,7 +56,8 @@ describe('Basic', function() {
     server = HemeraTestsuite.start_server(PORT, () => {
       const nats = Nats.connect(natsUrl)
       hemera = new Hemera(nats)
-      hemera.use(HemeraRabbitmq, { rabbitmq: options })
+      hemera.use(HemeraJoi)
+      hemera.use(HemeraRabbitmq, { rabbot: options })
       hemera.ready(done)
     })
   })
@@ -67,34 +68,77 @@ describe('Basic', function() {
   })
 
   it('simple pub/sub', function(done) {
+    const subject = 'message'
+    const payload = {
+      name: 'peter',
+      amount: 50
+    }
     hemera.add(
       {
-        topic: 'rabbitmq.publisher.message',
-        cmd: 'subscribe'
+        topic: `${topic}.${subject}`
       },
-      function(req, cb) {
-        cb()
+      req => {
+        expect(req.data).to.be.equals(payload)
+        done()
       }
     )
 
-    setTimeout(function() {
-      hemera.act(
-        {
-          topic: 'rabbitmq',
-          cmd: 'publish',
-          exchange: 'pubsub',
-          type: 'publisher.message',
-          data: {
-            name: 'peter',
-            amount: 50
-          }
+    hemera.rabbitmq.addPubSubProxy({
+      type: subject
+    })
+
+    hemera.act(
+      {
+        topic: 'rabbitmq',
+        cmd: 'publish',
+        exchange: 'myexchange',
+        options: {
+          type: subject
         },
-        function(err, resp) {
-          expect(err).to.be.not.exists()
-          expect(resp).to.be.equals({ result: 1 })
-          done()
-        }
-      )
-    }, 250)
+        data: payload
+      },
+      function(err, resp) {
+        expect(err).to.be.not.exists()
+        expect(resp).to.be.equals(true)
+      }
+    )
+  })
+
+  it('simple req/reply', function(done) {
+    const subject = 'request'
+    const payload = {
+      name: 'peter',
+      amount: 50
+    }
+    hemera.add(
+      {
+        topic: `${topic}.${subject}`
+      },
+      (req, cb) => {
+        expect(req.data).to.be.equals(payload)
+        cb(null, { foo: 'bar' })
+      }
+    )
+
+    hemera.rabbitmq.addRequestProxy({
+      type: subject
+    })
+
+    hemera.act(
+      {
+        topic: 'rabbitmq',
+        cmd: 'request',
+        exchange: 'myexchange',
+        options: {
+          type: subject
+        },
+        data: payload
+      },
+      function(err, resp) {
+        expect(err).to.be.not.exists()
+        expect(resp).to.be.equals({ foo: 'bar' })
+        done()
+      }
+    )
   })
 })

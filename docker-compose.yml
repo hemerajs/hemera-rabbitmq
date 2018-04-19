@@ -8,5 +8,5 @@ services:
       - '25672:25672'
       - '15672:15672'
     environment:
-    - RABBITMQ_PASSWORD=guest
-    - RABBITMQ_USERNAME=guest
+    - RABBITMQ_PASSWORD=user
+    - RABBITMQ_USERNAME=user

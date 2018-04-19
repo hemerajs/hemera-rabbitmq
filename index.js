@@ -4,85 +4,117 @@ const Hp = require('hemera-plugin')
 const Rabbit = require('rabbot')
 
 function hemeraRabbitmq(hemera, opts) {
-  const handlers = []
   const Joi = hemera.joi
+  const topic = 'rabbitmq'
 
-  hemera.decorate('rabbitmq', {
-    handlers
-  })
+  return Rabbit.configure(opts.rabbot)
+    .then(() => {
+      // Sends all unhandled messages back to the queue.
+      Rabbit.nackUnhandled()
 
-  return Rabbit.configure(opts.rabbitmq).then(function() {
-    // Sends all unhandled messages back to the queue.
-    Rabbit.nackUnhandled()
+      // after this call, any new callbacks attached via handle will be wrapped in a try/catch
+      // that nacks the message on an error
+      Rabbit.nackOnError()
 
-    // after this call, any new callbacks attached via handle will be wrapped in a try/catch
-    // that nacks the message on an error
-    Rabbit.nackOnError()
-
-    function consume(type, cb) {
-      // only once per hemera instance
-      if (handlers[type]) {
-        return
-      }
-
-      const handler = Rabbit.handle(type, function(msg) {
-        hemera.act(
-          {
-            topic: `rabbitmq.${type}`,
-            cmd: 'subscribe',
-            data: msg.body
-          },
-          err => {
-            if (!err) {
-              return msg.ack()
-            }
-
-            msg.unack()
-          }
-        )
+      hemera.decorate('rabbitmq', {
+        addPubSubProxy: opts => publisher(opts),
+        addRequestProxy: opts => requestor(opts)
       })
 
-      handlers[type] = handler
-
-      cb(null, true)
-    }
-
-    hemera.add(
-      {
-        topic: 'rabbitmq',
-        cmd: 'subscribe',
-        type: Joi.string().required()
-      },
-      (req, cb) => consume(req.type, cb)
-    )
-
-    hemera.add(
-      {
-        topic: 'rabbitmq',
-        cmd: 'publish',
-        exchange: Joi.string().required(),
-        type: Joi.string().required(),
-        data: Joi.object().required()
-      },
-      function(req) {
-        return Rabbit.publish(req.exchange, {
-          type: req.type,
-          body: req.data
-        }).then(function() {
-          return true
+      function publisher(consOpts) {
+        Rabbit.handle(consOpts, msg => {
+          let pattern = {
+            pubsub$: true,
+            topic: `${topic}.${consOpts.type}`,
+            data: msg.body
+          }
+          if (typeof consOpts.pattern === 'object') {
+            pattern = Object.assign(consOpts.pattern, pattern)
+          }
+          hemera.act(pattern, err => {
+            if (err) {
+              msg.nack()
+              return
+            }
+            msg.ack()
+          })
         })
       }
-    )
-  })
+
+      function requestor(consOpts) {
+        Rabbit.handle(consOpts, msg => {
+          let pattern = {
+            topic: `${topic}.${consOpts.type}`,
+            data: msg.body
+          }
+          if (typeof consOpts.pattern === 'object') {
+            pattern = Object.assign(consOpts.pattern, pattern)
+          }
+          hemera.act(pattern, (err, req) => {
+            if (err) {
+              msg.nack()
+              return
+            }
+            msg.ack()
+            msg.reply(req)
+          })
+        })
+      }
+
+      hemera.add(
+        {
+          topic,
+          cmd: 'publish',
+          exchange: Joi.string().required(),
+          options: Joi.object().required(),
+          data: Joi.object().required()
+        },
+        function(req) {
+          return Rabbit.publish(
+            req.exchange,
+            Object.assign({ body: req.data }, req.options)
+          )
+            .then(() => true)
+            .catch(err => convertRabbotErr(err))
+        }
+      )
+
+      hemera.add(
+        {
+          topic,
+          cmd: 'request',
+          exchange: Joi.string().required(),
+          options: Joi.object().required(),
+          data: Joi.object().required()
+        },
+        function(req) {
+          return Rabbit.request(
+            req.exchange,
+            Object.assign({ body: req.data }, req.options)
+          )
+            .then(response => {
+              response.ack()
+              return response.body
+            })
+            .catch(err => convertRabbotErr(err))
+        }
+      )
+    })
+    .catch(err => convertRabbotErr(err))
+}
+
+function convertRabbotErr(err) {
+  if (typeof err === 'string') {
+    return Promise.reject(new Error('rabbot: ' + err))
+  }
+  return err
 }
 
 const plugin = Hp(hemeraRabbitmq, {
-  hemera: '^3.0.0',
+  hemera: '^5.0.0',
   name: require('./package.json').name,
   dependencies: ['hemera-joi'],
-  options: {
-    payloadValidator: 'hemera-joi'
-  }
+  decorators: ['joi']
 })
 
 module.exports = plugin
