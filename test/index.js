@@ -15,8 +15,8 @@ describe('Basic', function() {
   let server
   let hemera
   let rabbitmq = {
-    username: 'user',
-    password: 'user'
+    username: 'guest',
+    password: 'guest'
   }
   let topic = 'rabbitmq'
 
