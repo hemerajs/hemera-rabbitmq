@@ -122,6 +122,8 @@ hemera.act(
 
 ### Create pub/sub subscriber
 
+Create a new rabbitmq subscriber which handles the interest on this subject and forward all message with pub/sub semantic to the hemera service.
+
 The interface is:
 
 * `pattern`: the pattern which arrive hemera
@@ -141,6 +143,8 @@ hemera.rabbitmq.addPubSubProxy(
 ---
 
 ### Create request/reply subscriber
+
+Create a new rabbitmq subscriber which handles the interest on this subject and forward all message with request/reply semantic to the hemera service.
 
 The interface is:
 
@@ -175,7 +179,7 @@ hemera.add(
   },
   function(req, reply) {
     // In case of pub / sub you can't reply
-    // In case of request / reply you can only reply with valid json
+    // In case of request / reply you can reply only with valid json
   }
 )
 ```
