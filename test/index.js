@@ -7,6 +7,7 @@ const HemeraRabbitmq = require('./../index')
 const Code = require('code')
 const HemeraTestsuite = require('hemera-testsuite')
 const expect = Code.expect
+const isTravis = 'TRAVIS' in process.env && 'CI' in process.env
 
 describe('Basic', function() {
   let PORT = 6242
@@ -14,10 +15,15 @@ describe('Basic', function() {
 
   let server
   let hemera
-  let rabbitmq = {
-    username: 'guest',
-    password: 'guest'
-  }
+  let rabbitmq = isTravis
+    ? {
+        username: 'guest',
+        password: 'guest'
+      }
+    : {
+        username: 'user',
+        password: 'user'
+      }
   let topic = 'rabbitmq'
 
   const options = {
