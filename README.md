@@ -182,6 +182,7 @@ hemera.add(
   function(req, reply) {
     // In case of pub / sub you can't reply
     // In case of request / reply you can reply only with valid json
+    // In case of error or crash the message is redelivered
   }
 )
 ```
