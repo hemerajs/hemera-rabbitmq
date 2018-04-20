@@ -122,7 +122,8 @@ hemera.act(
 
 ### Create pub/sub subscriber
 
-Create a new rabbitmq subscriber which handles the interest on this subject and forward all message with pub/sub semantic to the hemera service.
+Create a new rabbitmq subscriber which handles the interest on this subject and forward all messages with pub/sub semantic to the hemera service.
+You can define a pattern which represent the destination hemera service.
 
 The interface is:
 
@@ -144,7 +145,8 @@ hemera.rabbitmq.addPubSubProxy(
 
 ### Create request/reply subscriber
 
-Create a new rabbitmq subscriber which handles the interest on this subject and forward all message with request/reply semantic to the hemera service.
+Create a new rabbitmq subscriber which handles the interest on this subject and forward all messages with request/reply semantic to the hemera service.
+You can define a pattern which represent the destination hemera service.
 
 The interface is:
 
@@ -168,7 +170,7 @@ hemera.rabbitmq.addRequestProxy(
 
 The pattern is:
 
-* `topic`: is a combination of the serviec name and the type `rabbitmq.<type>`
+* `topic`: is a combination of the service name and the type `rabbitmq.<type>`
 
 Example:
 
